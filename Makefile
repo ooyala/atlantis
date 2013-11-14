@@ -14,7 +14,7 @@ clean:
 copy-key:
 	@cp $(ATLANTIS_SECRET_DIR)/atlantis_key.go $(PROJECT_ROOT)/src/atlantis/crypto/key.go
 
-install:
+install-deps:
 	@echo "Installing Dependencies..."
 	@rm -rf $(VENDOR_PATH)
 	@mkdir -p $(VENDOR_PATH) || exit 2
