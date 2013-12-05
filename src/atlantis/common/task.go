@@ -191,7 +191,7 @@ func (t *Task) RunAsync(r *AsyncReply) error {
 	r.Id = t.Id
 	t.RUnlock()
 	go func() error {
-		t.Log("Begin")
+		t.Log("Begin %s", t.Description)
 		t.Lock()
 		t.StartTime = time.Now()
 		t.Unlock()
