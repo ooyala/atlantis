@@ -9,7 +9,7 @@ var randomChars = []byte("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz01
 
 // NOTE[jigish]: yes, i know this has modulo bias. i don't care. we don't need a truly random string, just
 // one that won't collide often.
-func CreateRandomId(size int) string {
+func CreateRandomID(size int) string {
 	randomBytes := make([]byte, size)
 	randomCharsLen := byte(len(randomChars))
 	// ignore error here because manas said so. randomBytes is static so if there was an error here we'd be

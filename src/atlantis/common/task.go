@@ -9,7 +9,7 @@ import (
 	"time"
 )
 
-const taskIdSize = 20
+const taskIDSize = 20
 
 var (
 	Tracker           = &TaskTracker{tasks: map[string]*Task{}}
@@ -42,7 +42,7 @@ type Task struct {
 	TaskStatus
 	Err      error
 	Tracker  *TaskTracker
-	Id       string
+	ID       string
 	Executor TaskExecutor
 	Request  interface{}
 	Result   interface{}
@@ -60,8 +60,8 @@ type TaskMaintenanceExecutor interface {
 	AllowDuringMaintenance() bool
 }
 
-func createTaskId() string {
-	return CreateRandomId(taskIdSize)
+func createTaskID() string {
+	return CreateRandomID(taskIDSize)
 }
 
 func (t *TaskTracker) SetMaintenance(on bool) {
@@ -109,21 +109,21 @@ func (t *TaskTracker) Idle(checkTask *Task) bool {
 	return idle
 }
 
-func (t *TaskTracker) ReserveTaskId(task *Task) string {
+func (t *TaskTracker) ReserveTaskID(task *Task) string {
 	t.Lock()
-	requestId := createTaskId()
-	for _, present := t.tasks[requestId]; present; _, present = t.tasks[requestId] {
-		requestId = createTaskId()
+	requestID := createTaskID()
+	for _, present := t.tasks[requestID]; present; _, present = t.tasks[requestID] {
+		requestID = createTaskID()
 	}
-	t.tasks[requestId] = task // reserve request id
+	t.tasks[requestID] = task // reserve request id
 	t.Unlock()
 	task.Lock()
-	task.Id = requestId
+	task.ID = requestID
 	task.Unlock()
-	return requestId
+	return requestID
 }
 
-func (t *TaskTracker) ReleaseTaskId(id string) {
+func (t *TaskTracker) ReleaseTaskID(id string) {
 	t.Lock()
 	delete(t.tasks, id)
 	t.Unlock()
@@ -167,7 +167,7 @@ func (t *Task) Run() error {
 			return t.End(errors.New("Under Maintenance"), false)
 		}
 	}
-	t.Tracker.ReserveTaskId(t)
+	t.Tracker.ReserveTaskID(t)
 	t.Log("Begin %s", t.Description)
 	t.Lock()
 	t.StartTime = time.Now()
@@ -186,9 +186,9 @@ func (t *Task) RunAsync(r *AsyncReply) error {
 			return t.End(errors.New("Under Maintenance"), false)
 		}
 	}
-	t.Tracker.ReserveTaskId(t)
+	t.Tracker.ReserveTaskID(t)
 	t.RLock()
-	r.Id = t.Id
+	r.ID = t.ID
 	t.RUnlock()
 	go func() error {
 		t.Log("Begin %s", t.Description)
@@ -225,17 +225,17 @@ func (t *Task) End(err error, async bool) error {
 	if async {
 		time.AfterFunc(t.Tracker.ResultDuration, func() {
 			// keep result around for 30 min in case someone wants to check on it
-			t.Tracker.ReleaseTaskId(t.Id)
+			t.Tracker.ReleaseTaskID(t.ID)
 		})
 	} else {
-		t.Tracker.ReleaseTaskId(t.Id)
+		t.Tracker.ReleaseTaskID(t.ID)
 	}
 	return err
 }
 
 func (t *Task) Log(format string, args ...interface{}) {
 	t.RLock()
-	log.Printf("[RPC]["+t.Name+"]["+t.Id+"] "+format, args...)
+	log.Printf("[RPC]["+t.Name+"]["+t.ID+"] "+format, args...)
 	t.RUnlock()
 }
 

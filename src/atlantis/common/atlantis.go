@@ -32,7 +32,7 @@ type VersionReply struct {
 // ------------ Async -----------
 // used to for async requests
 type AsyncReply struct {
-	Id string
+	ID string
 }
 
 // ----------------------------------------------------------------------------------------------------------
