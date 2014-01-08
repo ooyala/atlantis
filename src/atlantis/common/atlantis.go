@@ -17,9 +17,6 @@ const (
 	DefaultLDAPPort     = uint16(636)
 	DefaultRegion       = "dev"
 	DefaultZone         = "dev"
-	DefaultMinProxyPort = uint16(40000)
-	DefaultMaxProxyPort = uint16(65535)
-	DefaultProxyIP      = "172.31.254.254"
 )
 
 // ------------ Version -----------
