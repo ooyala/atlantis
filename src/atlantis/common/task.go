@@ -251,6 +251,7 @@ type TaskStatus struct {
 	Name        string
 	Description string
 	Status      string
+	Warnings    []string
 	Done        bool
 	StartTime   time.Time
 	StatusTime  time.Time
@@ -262,6 +263,7 @@ func (t *TaskStatus) Map() map[string]interface{} {
 		"Name":        t.Name,
 		"Description": t.Description,
 		"Status":      t.Status,
+		"Warnings":    t.Warnings,
 		"Done":        t.Done,
 		"StartTime":   t.StartTime,
 		"StatusTime":  t.StatusTime,
@@ -273,14 +275,23 @@ func (t *TaskStatus) String() string {
 	return fmt.Sprintf(`%s
 Description : %s
 Status      : %s
+Warnings    : %v
 Done        : %t
 StartTime   : %s
 StatusTime  : %s
-EndTime     : %s`, t.Name, t.Description, t.Status, t.Done, t.StartTime, t.StatusTime,
+EndTime     : %s`, t.Name, t.Description, t.Status, t.Warnings, t.Done, t.StartTime, t.StatusTime,
 		t.EndTime)
 }
 
 func (t *TaskStatus) CopyTaskStatus() *TaskStatus {
-	return &TaskStatus{t.Name, t.Description, t.Status, t.Done, t.StartTime, t.StatusTime,
+	return &TaskStatus{t.Name, t.Description, t.Status, t.Warnings, t.Done, t.StartTime, t.StatusTime,
 		t.EndTime}
+}
+
+func (t *TaskStatus) AddWarning(warn string) {
+	if t.Warnings == nil {
+		t.Warnings = []string{warn}
+	} else {
+		t.Warnings = append(t.Warnings, warn)
+	}
 }
