@@ -5,18 +5,18 @@ package common
 // ----------------------------------------------------------------------------------------------------------
 
 const (
-	StatusOk            = "OK"
-	StatusMaintenance   = "MAINTENANCE"
-	StatusError         = "ERROR"
-	StatusDegraded      = "DEGRADED"
-	StatusUnknown       = "UNKNOWN"
-	StatusDone          = "DONE"
-	StatusInit          = "INIT"
-	StatusFull          = "FULL" // Supervisor Health Check status when no more containers are available
-	ManifestFile        = "manifest.toml"
-	DefaultLDAPPort     = uint16(636)
-	DefaultRegion       = "dev"
-	DefaultZone         = "dev"
+	StatusOk          = "OK"
+	StatusMaintenance = "MAINTENANCE"
+	StatusError       = "ERROR"
+	StatusDegraded    = "DEGRADED"
+	StatusUnknown     = "UNKNOWN"
+	StatusDone        = "DONE"
+	StatusInit        = "INIT"
+	StatusFull        = "FULL" // Supervisor Health Check status when no more containers are available
+	ManifestFile      = "manifest.toml"
+	DefaultLDAPPort   = uint16(636)
+	DefaultRegion     = "dev"
+	DefaultZone       = "dev"
 )
 
 // ------------ Version -----------
