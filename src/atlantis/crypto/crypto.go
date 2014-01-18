@@ -90,3 +90,11 @@ func Decrypt(b64ed []byte) []byte {
 	}
 	return unpad(decrypted) // unpad and we're done
 }
+
+func EncryptString(decrypted string) string {
+	return string(Encrypt([]byte(decrypted)))
+}
+
+func DecryptString(b64ed string) string {
+	return string(Decrypt([]byte(b64ed)))
+}
