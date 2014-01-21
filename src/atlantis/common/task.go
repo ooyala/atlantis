@@ -247,6 +247,17 @@ func (t *Task) LogStatus(format string, args ...interface{}) {
 	t.Unlock()
 }
 
+func (t *Task) AddWarning(warn string) {
+	t.Lock()
+	if t.Warnings == nil {
+		t.Warnings = []string{warn}
+	} else {
+		t.Warnings = append(t.Warnings, warn)
+	}
+	t.Unlock()
+	t.Log("WARNING: %s", warn)
+}
+
 type TaskStatus struct {
 	Name        string
 	Description string
@@ -286,12 +297,4 @@ EndTime     : %s`, t.Name, t.Description, t.Status, t.Warnings, t.Done, t.StartT
 func (t *TaskStatus) CopyTaskStatus() *TaskStatus {
 	return &TaskStatus{t.Name, t.Description, t.Status, t.Warnings, t.Done, t.StartTime, t.StatusTime,
 		t.EndTime}
-}
-
-func (t *TaskStatus) AddWarning(warn string) {
-	if t.Warnings == nil {
-		t.Warnings = []string{warn}
-	} else {
-		t.Warnings = append(t.Warnings, warn)
-	}
 }
