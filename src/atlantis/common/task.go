@@ -64,6 +64,18 @@ func createTaskID() string {
 	return CreateRandomID(taskIDSize)
 }
 
+func (t *TaskTracker) ListIDs() []string {
+	t.Lock()
+	ids := make([]string, len(t.tasks))
+	i := 0
+	for id, _ := range t.tasks {
+		ids[i] = id
+		i++
+	}
+	t.Unlock()
+	return ids
+}
+
 func (t *TaskTracker) SetMaintenance(on bool) {
 	t.Lock()
 	t.Maintenance = on
