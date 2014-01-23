@@ -5,6 +5,11 @@ import (
 	"os"
 )
 
+const (
+	ContainerConfigDir  = "/etc/atlantis/config"
+	ContainerConfigFile = "/etc/atlantis/config/config.json"
+)
+
 type ContainerConfig struct {
 	ID   string `json:"id"`
 	Host string `json:"host"`
