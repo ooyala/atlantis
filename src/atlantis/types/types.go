@@ -23,8 +23,8 @@ type AppConfig struct {
 	Dependencies   map[string]map[string]interface{} `json:"dependencies"`
 }
 
-func LoadAppConfig(fname string) (*AppConfig, error) {
-	f, err := os.Open(fname)
+func LoadAppConfig() (*AppConfig, error) {
+	f, err := os.Open(ContainerConfigFile)
 	if err != nil {
 		return nil, err
 	}
