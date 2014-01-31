@@ -64,16 +64,17 @@ func createTaskID() string {
 	return CreateRandomID(taskIDSize)
 }
 
-func (t *TaskTracker) ListIDs(typ string) []string {
+func (t *TaskTracker) ListIDs(types []string) []string {
+	typesMap = make(map[string]bool, len(types))
+	for _, typ := range types {
+		typesMap[typ] = true
+	}
+	ids := []string{}
 	t.Lock()
-	ids := make([]string, len(t.tasks))
-	i := 0
 	for id, task := range t.tasks {
-		if task.Name != typ {
-			continue
+		if typesMap[task.Name] {
+			ids = append(ids, id)
 		}
-		ids[i] = id
-		i++
 	}
 	t.Unlock()
 	return ids
