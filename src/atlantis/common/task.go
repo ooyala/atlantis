@@ -65,7 +65,7 @@ func createTaskID() string {
 }
 
 func (t *TaskTracker) ListIDs(types []string) []string {
-	typesMap = make(map[string]bool, len(types))
+	typesMap := make(map[string]bool, len(types))
 	for _, typ := range types {
 		typesMap[typ] = true
 	}
