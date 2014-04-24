@@ -14,8 +14,10 @@ package common
 import (
 	"crypto/tls"
 	"errors"
+	"fmt"
 	"net/rpc"
 	"strings"
+	"time"
 )
 
 // Returns false if the two major versions mismatch
@@ -110,9 +112,31 @@ func (r *RPCClient) doRequest(name string, arg interface{}, reply interface{}) e
 	return client.Call(r.BaseName+"."+name, arg, reply)
 }
 
+func (r *RPCClient) doRequestWithTimeout(name string, arg interface{}, reply interface{}, timeout int) error {
+	client, err := r.newClient()
+	if err != nil {
+		return err
+	}
+	defer client.Close()
+	call := client.Go(r.BaseName+"."+name, arg, reply, nil)
+	select {
+	case c := <-call.Done:
+		return c.Error
+	case <-time.After(time.Duration(timeout) * time.Second):
+		return errors.New(fmt.Sprintf("Client timed out - no response within %d seconds.", timeout))
+	}
+}
+
 func (r *RPCClient) Call(name string, arg interface{}, reply interface{}) error {
 	if err := r.checkVersion(); err != nil {
 		return err
 	}
 	return r.doRequest(name, arg, reply)
+}
+
+func (r *RPCClient) CallWithTimeout(name string, arg interface{}, reply interface{}, timeout int) error {
+	if err := r.checkVersion(); err != nil {
+		return err
+	}
+	return r.doRequestWithTimeout(name, arg, reply, timeout)	
 }
