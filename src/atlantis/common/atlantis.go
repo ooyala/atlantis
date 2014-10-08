@@ -28,6 +28,7 @@ const (
 	DefaultLDAPPort   = uint16(636)
 	DefaultRegion     = "dev"
 	DefaultZone       = "dev"
+	JIRAPrefix        = "CR"
 )
 
 // ------------ Version -----------

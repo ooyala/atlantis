@@ -160,5 +160,5 @@ func (r *RPCClient) CallWithTimeout(name string, arg interface{}, reply interfac
 	if err := r.checkVersionWithTimeout(timeout); err != nil {
 		return err
 	}
-	return r.doRequestWithTimeout(name, arg, reply, timeout)	
+	return r.doRequestWithTimeout(name, arg, reply, timeout)
 }
