@@ -40,7 +40,7 @@ func (o BasicRPCServerOpts) RPCHostAndPort() string {
 type RPCClient struct {
 	BaseName     string
 	RPCVersion   string
-	Opts         RPCServerOpts
+	Opts         []RPCServerOpts
 	UseTLS       bool
 	VersionError error
 	VersionOk    bool
@@ -51,14 +51,19 @@ func NewRPCClient(hostAndPort, baseName, rpcVersion string, useTLS bool) *RPCCli
 }
 
 func NewRPCClientWithConfig(config RPCServerOpts, baseName, rpcVersion string, useTLS bool) *RPCClient {
-	return &RPCClient{baseName, rpcVersion, config, useTLS, nil, false}
+	configs := []RPCServerOpts{config}
+	return &RPCClient{baseName, rpcVersion, configs, useTLS, nil, false}
 }
 
-func (r *RPCClient) newClient() (*rpc.Client, error) {
+func NewMultiRPCClientWithConfig(configs []RPCServerOpts, baseName, rpcVersion string, useTLS bool) *RPCClient {
+	return &RPCClient{baseName, rpcVersion, configs, useTLS, nil, false}
+}
+
+func (r *RPCClient) newClient(region int) (*rpc.Client, error) {
 	if r.UseTLS {
-		return r.newTLSClient()
+		return r.newTLSClient(region)
 	}
-	return rpc.DialHTTP("tcp", r.Opts.RPCHostAndPort())
+	return r.newClient(region)
 }
 
 func (r *RPCClient) tlsConfig() (*tls.Config, error) {
@@ -68,12 +73,12 @@ func (r *RPCClient) tlsConfig() (*tls.Config, error) {
 	return config, err
 }
 
-func (r *RPCClient) newTLSClient() (*rpc.Client, error) {
+func (r *RPCClient) newTLSClient(region int) (*rpc.Client, error) {
 	config, err := r.tlsConfig()
 	if err != nil {
 		panic(err)
 	}
-	conn, err := tls.Dial("tcp", r.Opts.RPCHostAndPort(), config)
+	conn, err := tls.Dial("tcp", r.Opts[region].RPCHostAndPort(), config)
 	if err != nil {
 		panic(err)
 	}
@@ -81,13 +86,13 @@ func (r *RPCClient) newTLSClient() (*rpc.Client, error) {
 	return c, err
 }
 
-func (r *RPCClient) checkVersion() error {
+func (r *RPCClient) checkVersion(region int) error {
 	if r.VersionOk {
 		return nil
 	}
 	arg := VersionArg{}
 	var reply VersionReply
-	err := r.doRequest("Version", arg, &reply)
+	err := r.doRequest("Version", arg, region, &reply)
 	if err != nil {
 		r.VersionError = err
 		r.VersionOk = false
@@ -103,30 +108,8 @@ func (r *RPCClient) checkVersion() error {
 	return nil
 }
 
-func (r *RPCClient) checkVersionWithTimeout(timeout int) error {
-	if r.VersionOk {
-		return nil
-	}
-	arg := VersionArg{}
-	var reply VersionReply
-	err := r.doRequestWithTimeout("Version", arg, &reply, timeout)
-	if err != nil {
-		r.VersionError = err
-		r.VersionOk = false
-		return err
-	}
-	if !CompatibleVersions(reply.RPCVersion, r.RPCVersion) {
-		err := errors.New("Version Mismatch. Server: " + reply.RPCVersion + ", Client: " + r.RPCVersion)
-		r.VersionError = err
-		r.VersionOk = false
-		return err
-	}
-	r.VersionOk = true
-	return nil
-}
-
-func (r *RPCClient) doRequest(name string, arg interface{}, reply interface{}) error {
-	client, err := r.newClient()
+func (r *RPCClient) doRequest(name string, arg interface{}, region int, reply interface{}) error {
+	client, err := r.newClient(region)
 	if err != nil {
 		return err
 	}
@@ -134,8 +117,8 @@ func (r *RPCClient) doRequest(name string, arg interface{}, reply interface{}) e
 	return client.Call(r.BaseName+"."+name, arg, reply)
 }
 
-func (r *RPCClient) doRequestWithTimeout(name string, arg interface{}, reply interface{}, timeout int) error {
-	client, err := r.newClient()
+func (r *RPCClient) doRequestWithTimeout(name string, arg interface{}, region int, reply interface{}, timeout int) error {
+	client, err := r.newClient(region)
 	if err != nil {
 		return err
 	}
@@ -150,15 +133,23 @@ func (r *RPCClient) doRequestWithTimeout(name string, arg interface{}, reply int
 }
 
 func (r *RPCClient) Call(name string, arg interface{}, reply interface{}) error {
-	if err := r.checkVersion(); err != nil {
+	return r.CallMulti(name, arg, 0, reply)
+}
+
+func (r *RPCClient) CallMulti(name string, arg interface{}, region int, reply interface{}) error {
+	if err := r.checkVersion(region); err != nil {
 		return err
 	}
-	return r.doRequest(name, arg, reply)
+	return r.doRequest(name, arg, region, reply)
 }
 
 func (r *RPCClient) CallWithTimeout(name string, arg interface{}, reply interface{}, timeout int) error {
-	if err := r.checkVersionWithTimeout(timeout); err != nil {
+	return r.CallMultiWithTimeout(name, arg, 0, reply, timeout)
+}
+
+func (r *RPCClient) CallMultiWithTimeout(name string, arg interface{}, region int, reply interface{}, timeout int) error {
+	if err := r.checkVersion(region); err != nil {
 		return err
 	}
-	return r.doRequestWithTimeout(name, arg, reply, timeout)	
+	return r.doRequestWithTimeout(name, arg, region, reply, timeout)
 }
