@@ -108,6 +108,28 @@ func (r *RPCClient) checkVersion(region int) error {
 	return nil
 }
 
+func (r *RPCClient) checkVersionWithTimeout(timeout int, region int) error {
+	if r.VersionOk {
+		return nil
+	}
+	arg := VersionArg{}
+	var reply VersionReply
+	err := r.doRequestWithTimeout("Version", arg, region, &reply, timeout)
+	if err != nil {
+		r.VersionError = err
+		r.VersionOk = false
+		return err
+	}
+	if !CompatibleVersions(reply.RPCVersion, r.RPCVersion) {
+		err := errors.New("Version Mismatch. Server: " + reply.RPCVersion + ", Client: " + r.RPCVersion)
+		r.VersionError = err
+		r.VersionOk = false
+		return err
+	}
+	r.VersionOk = true
+	return nil
+}
+
 func (r *RPCClient) doRequest(name string, arg interface{}, region int, reply interface{}) error {
 	client, err := r.newClient(region)
 	if err != nil {
@@ -148,7 +170,7 @@ func (r *RPCClient) CallWithTimeout(name string, arg interface{}, reply interfac
 }
 
 func (r *RPCClient) CallMultiWithTimeout(name string, arg interface{}, region int, reply interface{}, timeout int) error {
-	if err := r.checkVersion(region); err != nil {
+	if err := r.checkVersionWithTimeout(region, timeout); err != nil {
 		return err
 	}
 	return r.doRequestWithTimeout(name, arg, region, reply, timeout)
