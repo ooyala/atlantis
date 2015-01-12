@@ -63,7 +63,7 @@ func (r *RPCClient) newClient(region int) (*rpc.Client, error) {
 	if r.UseTLS {
 		return r.newTLSClient(region)
 	}
-	return r.newClient(region)
+	return rpc.DialHTTP("tcp", r.Opts[region].RPCHostAndPort())
 }
 
 func (r *RPCClient) tlsConfig() (*tls.Config, error) {
