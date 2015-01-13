@@ -108,7 +108,7 @@ func (r *RPCClient) checkVersion(region int) error {
 	return nil
 }
 
-func (r *RPCClient) checkVersionWithTimeout(timeout int, region int) error {
+func (r *RPCClient) checkVersionWithTimeout(region int, timeout int) error {
 	if r.VersionOk {
 		return nil
 	}
