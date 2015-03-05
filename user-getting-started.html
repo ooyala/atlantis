@@ -1,0 +1,556 @@
+<html>
+  <head>
+    <title>A User's Guide to Getting Started With Atlantis</title>
+  </head>
+  <body>
+      <h1>A User's Guide to Getting Started With Atlantis</h1>
+      <p>This page acts as an introduction to Atlantis from the perspective of a user of Atlantis: a developer looking to deploy applications.  It is not intended as a guide for a developer working to improve Atlantis, though it may be a helpful overview of some of its features.</p>
+      <h1>Introduction</h1>
+      <p>This guide will help you understand the workflow to deploy a new application through Atlantis. This guide is focused on the usage of the Atlantis Dashboard, a GUI-based application. If you prefer to use the command line, the atlantis-manager binary can also be used; see its help for more information.</p>
+      <ol>
+        <li>Set up your app and TOML-formatted manifest in Github.</li>
+        <li>Register your app in Atlantis.</li>
+        <li>Specify the dependencies and routing for the deployment environment.</li>
+        <li>Build and deploy the app.</li>
+      </ol>
+      <h1>Setup </h1>
+      <p>Log into the Atlantis Dashboard on the default https port of the manager.</p>
+      <p>
+        <span style="line-height: 1.4285715;">A superuser must give a team permissions for an application if LDAP permissions are enabled.  At that point, any team member can register and work with the application.<br/>
+        </span>
+      </p>
+      <p>We assume that you have prepared a manifest using <a href="https://github.com/toml-lang/toml">TOML</a> (manifest.toml), which must contain the following fields that you will use when registering and deploying your app:</p>
+      <ul>
+        <li>
+          <strong>name</strong>: This is the name that will be used for all references in Atlantis.</li>
+        <li>
+          <strong>description</strong>: A text description of your app.</li>
+        <li>
+          <strong>internal</strong>: Whether it is an Internal or External app (select the <strong>Internal</strong> checkbox to indicate an internal app).</li>
+        <li>
+          <strong>image</strong>: "precise64" (64-bit Ubuntu Precise) is currently supported.</li>
+        <li>
+          <strong>app_type</strong>: Language and version. For example, <em>go1.3</em>.</li>
+        <li>
+          <strong>run_commands</strong>: An array of commands.</li>
+        <li>
+          <strong>dependencies</strong>: An array of dependencies. These must be specified or they will not be used at runtime. <span style="line-height: 1.4285715;">When an internal application is requested as a dependency, it will be automatically configured with an </span> <em style="line-height: 1.4285715;"> <strong>address</strong> </em> <span style="line-height: 1.4285715;"> field in the dependency JSON pointing to the host and port. </span> <span style="line-height: 1.4285715;">External applications are not normally used as dependencies since they are intended for direct use by customers (whether within Ooyala or external providers). To set up a dependency outside of Atlantis, see <a href="https://wiki.corp.ooyala.com/display/ENG/Getting+Started+with+Atlantis#GettingStartedwithAtlantis-Settingupanon-AtlantisDependency">Setting up a non-Atlantis Dependency</a>. The example below includes a dependency on the cmk app (see <a href="https://wiki.corp.ooyala.com/display/ENG/Getting+Started+with+Atlantis#GettingStartedwithAtlantis-Monitoring">Monitoring</a> for more information about cmk).</span>
+        </li>
+        <li>
+          <strong>cpu_shares</strong>: The number of CPU shares guaranteed to the application.</li>
+        <li>
+          <strong>memory_limit</strong>: The maximum memory (in MB) that the application may use. Go apps typically require 128 to 256 MB, and Ruby apps may require 512 to 1024 MB. </li>
+      </ul>
+      <p>For example:</p>
+      <pre>     name = "hello-go"
+     description = "Hello World Go Server"
+     internal = true
+     image = "precise64"
+     app_type = "go1.3"
+     run_commands = [ "./hello" ]
+     dependencies = [ "cmk" ]
+     cpu_shares = 5
+     memory_limit = 128</pre>
+      <h2>Register your App</h2>
+      <p>You only need to register your app once.</p>
+      <p>To register an Atlantis app, select <strong>Register &gt; Apps </strong>menu item in the Atlantis Dashboard<strong>.</strong>
+      </p>
+      <p>
+        <span style="line-height: 1.4285715;">Click the <strong>Register</strong> radio button if you are registering your app for the first time, or the <strong>Update</strong> radio button if you are updating your app's registration information.</span>
+      </p>
+      <p>
+        <span style="line-height: 1.4285715;">Specify the following information, ensuring it matches the information contained in the app's manifest.toml file:</span>
+      </p>
+      <ul>
+        <li>The name of the app</li>
+        <li>Whether it is an Internal or External app (select the <strong>Internal</strong> checkbox to indicate an internal app). Internal applications are used by other services running in Atlantis, while external applications are meant to serve users directly.  This is determined primarily through routing, as well as dependency handling.</li>
+        <li>The repo indicating its location</li>
+        <li>The path to the root within the repo</li>
+        <li>The owner email (used for dependency requests)</li>
+      </ul>
+      <p>To register a non-Atlantis app, select the <strong>Non-Atlantis</strong> checkbox and specify:</p>
+      <ul>
+        <li>The name of the app</li>
+        <li>The owner email (used for dependency requests)</li>
+      </ul>
+      <p>If you would like to specify dependencies on other apps, you can specify such information in the <strong>Request Dependency</strong> section. See below for more information.</p>
+      <p>Click <strong>Perform Action</strong>.</p>
+      <h1>Environment</h1>
+      <h2>Requesting Dependencies</h2>
+      <p>To request dependencies on applications, begin by specifying those dependencies in the manifest.toml file submitted to Github with your application. In the following example, an external application called hello-proxy-go depends on an internal application called hello-go<span style="line-height: 1.4285715;">:</span>
+      </p>
+      <pre>     name = "hello-proxy-go"
+     description = "A proxy for the Hello World Go Server"
+     internal = false
+     image = "precise64"
+     app_type = "go1.2"
+     run_commands = [ "./hello-proxy" ]
+     dependencies = [ "hello-go" ]
+     cpu_shares = 5
+     memory_limit = 128</pre>
+      <p>To request a dependency when registering your app, select <strong>Register &gt; Apps </strong>menu item in the Atlantis Dashboard. In the <strong>Request Dependency</strong> section, specify the following information:</p>
+      <ul>
+        <li>
+          <strong>App</strong>: The app you are deploying. In this example you would specify <em>hello-proxy-go</em>.</li>
+        <li>
+          <strong>Dependency</strong>: The app on which your deployed app depends. In this example you would specify <em>hello-go</em>.</li>
+        <li>
+          <strong>Env(s)</strong>: A comma separated list of environments in which the dependency is deployed. In this example you would specify <em>demo</em>.</li>
+      </ul>
+      <p>Click <strong>Perform Action</strong>. A<span style="line-height: 1.4285715;">n email request is sent to the owner email address of the app you specified in the </span> <strong style="line-height: 1.4285715;">Dependency</strong> <span style="line-height: 1.4285715;"> field. Once approved, parameters are displayed on the app registration page indicating the dependency is allowed. You must request a dependency in each region and for each environment.</span>
+      </p>
+      <p>Select <strong>Manage &gt; Environments </strong>menu item in the Atlantis Dashboard. The <strong>Resolve Dependencies</strong> section provides you with the address information for the dependencies you specify. Specify the following:</p>
+      <ul>
+        <li>
+          <strong>App</strong>: The app you are deploying. Specify <em>hello-proxy-go</em> for this example.</li>
+        <li>
+          <strong>Environment</strong>: The environment in which the dependency is deployed. Specify <em>demo</em> for this example.</li>
+        <li>
+          <strong>Dependency Names</strong>: A comma separated list of apps on which your deployed app depends. Specify <em>hello-go</em> for this example.</li>
+      </ul>
+      <p>The <strong>Resolved Dependencies</strong> text area provides you with the address information for the specified environment. For example:</p>
+      <pre>        Resolved Dependencies for Environment 'us-east-1a':
+        {
+          "hello-go" {
+            "address": "internal-router.a.us-east-1.atlantis.example.com:49156"
+          }
+        }
+      </pre>
+      <h3>Setting up a non-Atlantis Dependency</h3>
+      <p>Go to the manager and select <strong>Register &gt; Apps</strong>.  In <strong>App Registration</strong> select <strong>Register</strong> and check <strong>Non-Atlantis</strong>.  Enter the application name and an owner e-mail for dependency requests.</p>
+      <p>Once the app is registered, configure its information.  In <strong>App Environments</strong>  select <strong>Add</strong> to specify the information for your app in the appropriate environments.  The convention for a simple hostname is to use a single "address field" containing the URL of the service:</p>
+      <pre>{<br/>  "address": "<span class="nolink">http://app-load-balancer.us-east-1.example.com:8081/</span>"<br/>}</pre>
+      <p>Other fields may be added as needed.</p>
+      <p>Fields can also be added on a per-application basis using the <strong>App Depender Environments</strong> section. For example, database credentials should be per-application.</p>
+      <p>Note also that when you click a link to approve a dependency, you'll be brought back to this page, so it often makes sense to fill in dependency information as needed.</p>
+      <h3>Dependency Examples: vstreams and helios</h3>
+      <p>
+        <span style="color: rgb(0,0,0);">Consider the example of </span>
+        <code>blog</code>
+        <span style="color: rgb(0,0,0);">, </span>
+        <code>entry-server</code>
+        <span style="color: rgb(0,0,0);">, and </span>
+        <code>database</code>
+        <span style="color: rgb(0,0,0);">. Let's say that </span>
+        <code>blog</code>
+        <span style="color: rgb(0,0,0);"> is an external app deployed on Atlantis owned by the frontend team, </span>
+        <code>entry-server</code>
+        <span style="color: rgb(0,0,0);"> is an internal app deployed on Atlantis owned by the backend team, and </span>
+        <code>database</code>
+        <span style="color: rgb(0,0,0);"> is not deployed on Atlantis but is a dependency that is required by some Atlantis apps (owned by the DBA). </span>
+        <code>blog</code>
+        <span style="color: rgb(0,0,0);"> depends on </span>
+        <code>entry-server</code>
+        <span style="color: rgb(0,0,0);"> while </span>
+        <code>entry-server</code>
+        <span style="color: rgb(0,0,0);"> depends on </span>
+        <code>database</code>
+        <span style="color: rgb(0,0,0);">. In order for this to work,</span>
+        <span style="color: rgb(0,0,0);"> </span>
+        <code>database</code>
+        <span style="color: rgb(0,0,0);"> will be registered as a Non-Atlantis app.</span>Here is how <code>entry-server</code>'s <code>database</code> dependency will work:</p>
+      <ol>
+        <li>DBA will register the <code>database</code> Non-Atlantis app</li>
+        <li>DBA will update the <code>database</code> environments to add the Host/Port/IP data</li>
+        <li>Backend will register the <code>entry-server</code> internal Atlantis app</li>
+        <li>Backend will request DBA to add <code>entry-server</code> as a <code>database</code> depender for the environments <code>staging</code> and <code>prod</code>
+        </li>
+        <li>DBA will update <code>database</code> dependers to add <code>entry-server</code>
+        </li>
+        <li>DBA will update <code>database</code> <code>entry-server</code> app information to add <code>staging</code> and <code>prod</code> as allowed environments.</li>
+        <li>DBA will will update <code>database</code>'s <code>entry-server</code> app information to add the username/password he created for <code>entry-server</code>.</li>
+        <li>Backend will now be able to deploy <code>entry-server</code> in both <code>staging</code> and <code>prod</code> while depending on <code>database</code>.</li>
+      </ol>
+      <p>And here is now <code>blog</code>'s <code>entry-server</code> dependency will work:</p>
+      <ol>
+        <li>Backend has already registered <code>entry-server</code> as an internal Atlantis App</li>
+        <li>Frontend will register the <code>blog</code> external Atlantis app</li>
+        <li>Frontend will request Backend to add <code>blog</code> as a <code>entry-server</code> depender for the environments <code>staging</code> and <code>prod</code>
+        </li>
+        <li>Backend will update <code>entry-server</code>'s dependers to add <code>blog</code>
+        </li>
+        <li>Backend will update <code>entry-server</code>'s <code>blog</code> app information to add <code>staging</code> and <code>prod</code> as allowed environments.</li>
+        <li>Backend does not have to add any further information because Atlantis will autofill everything that is needed.</li>
+        <li>Frontend will now be able to deploy <code>blog</code> in both <code>staging</code> and <code>prod</code> while depending on <code>entry-server</code>.</li>
+      </ol>
+      <h2>Specifying Routing</h2>
+      <p>There are separate routers for internal and external apps, and the default routing for each is significantly different. You will normally specify the router configuration <em> <strong>after</strong> </em> you have deployed your app. This is typically the case when the routing defaults do not serve your purposes.</p>
+      <p>
+        <em>Internal</em> and <em>external</em> apps run on the same supervisors. The routers may be in separate security groups, and internal applications do not normally communicate with the external router. <span style="line-height: 1.4285715;">Internal apps are used by other applications (not by people), and are assigned a unique port for each application/environment pair, by default in the 49000 range.  This port is configured to point to the application's trie (application.environment) when the application is first deployed in the environment, and will not change unless one of the two is deleted (tearing down all containers is not sufficient; as long as the application and environment are still registered, the port will stay constant).  This is normally the only routing necessary for internal applications, and no manual configuration is required.</span>
+      </p>
+      <p>
+        <span style="line-height: 1.4285715;">For an internal application, typically no specific configuration is required. Once the app is deployed in a specific environment, that app/env will be assigned a port that will not change as long as the app and environment exist.  Even if all instances are torn down, the port will be retained as long as the app and environment are registered.</span>
+      </p>
+      <p>External applications, on the other hand, are not automatically routed and must be configured manually.  Atlantis's assumption is that the application will be available on port 80, with some application specific-routing (e.g., send www.example.com/blog to the blog app).</p>
+      <p>Select the <strong>Manage &gt; Router </strong>menu item in the Atlantis Dashboard. The <strong>Router Config Management</strong> page appears, giving you tabs to configure routing for either an external or internal app.</p>
+      <p>One useful feature of Atlantis is to have multiple versions of an application running in production, with selection criteria to select which version to send a particular request to.</p>
+      <h3>Routing Internal Requests</h3>
+      <p>
+        <span>To configure the routing for an internal app, specify the <em>ports</em>, <em>tries</em>, and <em>rules</em>. The </span> <strong>Ports</strong> <span> area lets you to specify the port and root trie, the </span> <strong>Tries</strong> <span> area lets you to specify which existing rules to use with the root trie, and the </span> <strong>Rules</strong> <span> area lets you create new rules</span>:</p>
+      <ul>
+        <li>
+          <span>A <strong>port</strong> is simply a standard TCP port; the request where the port is received determines the initial trie used to match the request.</span>
+        </li>
+        <li>
+          <span>A <strong>pool</strong> is a collection of containers running the same version of the same application in the same environment (e.g., hello-go-ab42dc-prod).  Instances within a pool are interchangable, and the routers will load-balance across them automatically. <span style="color: rgb(0,0,0);">Pools are automatically created by Atlantis and should not be created manually. The Pool's endpoints' health will be checked. If the health is not OK, the pool will not resolve to that endpoint. Otherwise, the Pool resolves to endpoints using a least connection policy.</span>
+          </span>
+        </li>
+        <li>
+          <span>A <strong>rule</strong> is a specific if-then condition used in routing: if a condition matches, then either send the request to a given pool, or continue onto another trie for further disambiguation. <span style="color: rgb(0,0,0);">If the target does not exist, this results in a 502 Bad Gateway.</span>
+          </span>
+        </li>
+        <li>
+          <span>A <strong>trie</strong> is an ordered list of rules to try; the first rule that matches will dictate the next action (either going to a pool or another trie).</span>
+        </li>
+      </ul>
+      <h4>Specifying the Port</h4>
+      <p>The <strong>Ports</strong> area provides you with a drop down list from which you can select a port. Once you have specified a port, you can test it by appending the specified port to the internal router URL. For example, if you specified port 49156, browse to <span class="external-link">http://internal-router.us-east-1.atlantis.example.com</span>:49156 to check whether it is running on that port.</p>
+      <p>To see routing diagnostics, specify 8080/&lt;<em>port</em>&gt;. For example, <span class="external-link">http://internal-router.us-east-1.atlantis.example.com</span>:8080/49156/ displays the port number, trie, rules, and pools for your application. </p>
+      <p>To view all the containers on the router, specify 8080/statusz. For example, <span class="nolink">http://internal-router.us-east-1.atlantis.example.com/</span>:8080/statusz/ <a class="external-link" href="http://internal-router.us-east-1.atlantis.services.ooyala.com/" rel="nofollow">.</a>
+      </p>
+      <p>Select the <strong>Root Trie</strong> in the drop down list. <span>In the ports section, select by port (not by name). In this case, select port 80 to see that it maps to the root trie.</span>
+      </p>
+      <h4>Specifying Tries</h4>
+      <p>Select the trie matching the <strong>Root Trie</strong> in the <strong>Ports</strong> area. The trie contains rules that have been previously created, and indicates the pool for your app version (specified by the SHA). You can add more rules to the trie by clicking the <strong>+</strong> icon and selecting from the drop down list. For example, if you deploy another instance of your app with a different SHA to the environment you can specify that instance as one of the rules. In this example, if the first container is torn down, the trie will ensure that the next app version will be used.</p>
+      <h4>Creating Rules</h4>
+      <p>Rules can match on various criteria:</p>
+      <ul>
+        <li>Host: Match the hostname; e.g. www.example.com. The <span>entry will vary based on the rule type; it will be Hostname, Header, Prefix, Suffix, Regexp, Percentage, Result, or App.Env. Choose either <strong>Send to Pool</strong> or <strong>Continue to trie</strong>, depending on whether this is a final rule going to the pool or an intermediate one determining where to go. All paths should end on an app.environment rule, so only those should point at pools.</span>
+        </li>
+        <li>Header: Match on an HTTP header; e.g., X_FORWARDED_PROTO: https</li>
+        <li>Path prefix: Match on a path prefix: e.g., /blog</li>
+        <li>Path suffix: Match on a path suffx: e.g., /healthz</li>
+        <li>Path regexp: Match a regular expression against the path.</li>
+        <li>Percentage: Match a random fraction of traffic</li>
+        <li>Static: Either always match or return an immediate error.</li>
+        <li>Multi-host: Match a host prefix. e.g. player.*.example.com</li>
+      </ul>
+      <p>For example, port 80 on an external router may map to a "root" trie; one rule on the root trie might send requests on the host "api<span class="external-link">.example.com</span>" to the "api-host" trie.  This trie could then send requests with the prefix "/blog/ to the blog.production trie (among other rules).</p>
+      <p>To create a new rule, specify the following information in the <strong>Rules</strong> area:</p>
+      <p>
+        <strong>Rule Name</strong>: Specify the name in the text box to the right of <strong>New rule</strong>.</p>
+      <p>
+        <strong>Type</strong>: Specifies how matching will be performed: <em> <strong>Host, Header, Path prefix, Path suffix, Path regexp, Percentage, Static, Multi-Host</strong> </em>. For example, if you select <em> <strong>Percentage</strong> </em>, you could specify that 10% of traffic is to be sent to the container selected from <strong>Send to pool</strong>.</p>
+      <p>
+        <strong>Hostname</strong>: Specify the host name from the drop down if you specified a <strong>Type</strong> of <em> <strong>Host</strong> </em>.</p>
+      <p>
+        <strong style="line-height: 1.4285715;">Continue to trie</strong> <span style="line-height: 1.4285715;">: Specifies the next trie.</span>
+      </p>
+      <p>Once you have specified the information for the new rule, click <strong>Create Rule</strong>. The new rule becomes available in the <strong>Tries</strong> drop down menu for adding rules.</p>
+      <h3>Routing External Requests</h3>
+      <p>An external request may go through various steps before hitting Atlantis - a CDN such as Akamai, SSL termination via nginx, or a load-balancer like Haproxy.  These steps are independent of Atlantis; we assume that a request somehow gets to Atlantis, and examine how it is routed once it hits the external router.</p>
+      <h3>Routing by hostname</h3>
+      <p>This is the most common case - you want to route myapplication.example.com (or a variant) to point at your application.  This takes two steps: creating a rule to route to your application, and adding it to the "root" trie.  This assumes you have a root trie is configured to route requests on port 80, so requests coming into Atlantis with the <a href="https://wiki.corp.ooyala.com/display/ENG/Getting+Started+with+Atlantis#GettingStartedwithAtlantis-RoutingExternalRequests">standard configuration</a> will go to this trie.</p>
+      <h4>Creating the rule</h4>
+      <p>Log into the manager, and go to Manage-&gt;Router.  Select the "Internal" or "External" tab to match your application.  In the third box, "Rules":</p>
+      <ul>
+        <li>
+          <span>Type in a name for your rule in the input box next to the "New Rule:" dropdown.  The convention for this type of rule is "[application].[environment]-host", to indicate that it is a host-based rule for the given application/environment pair.</span>
+        </li>
+        <li>
+          <span>Select "Host" for the "Type", and type in your hostname into the Hostname text box.  Confirm that the example matches what you expect.</span>
+        </li>
+        <li>
+          <span>Select the trie that this host should route to.  In the common case, this will simply be the [<span class="confluence-link">hostname</span>].[environment] trie; if you have more complex routing rules (e.g., enforcing HTTPS), point to that trie instead.  <strong>Do not</strong> route directly to a pool; that would require you to update the pool on every deploy.  If you route to the [hostname].[environment] trie, new pools will automatically be routed to.</span>
+        </li>
+        <li>
+          <span>Click "Create Rule" to create the rule.</span>
+        </li>
+      </ul>
+      <h4>Adding the rule to the root/port-80 trie</h4>
+      <p>
+        <strong>Warning</strong>: In the standard configuration, this trie routes most top-level domains routed through Atlantis.  Ideally, we'd have permissions on this so that you can't accidentally break other team's rules, but that's not currently the case.  Be careful, but as long as you don't click randomly around the page, you should be fine.</p>
+      <p>On the same page (Manage Router), in the "Tries" box:</p>
+      <ul>
+        <li>
+          <span>Select the "root" trie (for external applications) or "port-80" trie (for internal applications) from the dropdown.</span>
+        </li>
+        <li>
+          <span>At the bottom of the list, select your rule and click the blue + next to it to add it to the list.</span>
+        </li>
+        <li>
+          <span>Examine the rule to make sure you chose the right one.  If not click the red X to remove it and try again.</span>
+        </li>
+        <li>
+          <span>Click "Save Trie" to save the trie.  Until you click this button, your changes will not take effect.</span>
+        </li>
+      </ul>
+      <p>And you're done.  Please note that no changes are saved until you explicitly save them; if you did something wrong, you can just reload the page and your changes will be reverted.  But again, if you do save changes that you think may be incorrect, please contact appsplat-oncall immediately.</p>
+      <p>To check that this works, you can follow some of the relevant steps from <a href="https://wiki.corp.ooyala.com/display/ENG/Getting+Started+with+Atlantis#GettingStartedwithAtlantis-TroubleshootingDeployedApplicationContainers">Troubleshooting Deployed Atlantis Containers</a>, specifically,</p>
+      <pre>    curl -H 'Host: myapplication.example.com' [router]/path</pre>
+      <p>To test routing to your appllication, and</p>
+      <pre>    curl -H 'Host: myapplication.example.com' [router]:8080/80/path</pre>
+      <p>To see how routing works for your hostname on port 80.</p>
+      <h4>Getting the CNAME</h4>
+      <p>Once your application responds on the router, you need to get a CNAME that directs the hostname to the appropriate source, whether the Atlantis routers, haproxy, or Akamai.  This is outside the scope of Atlantis, though we do have some support for Route53 which could be extended to handle this case.</p>
+      <h3>Routing by hostname and path</h3>
+      <p>Some hosts are shared among multiple services; e.g., www.example.com/blog might go to the blog, while the rest of www.example.com should goes to web-primary.  To handle this, create a new trie for the host (e.g., www-host.production) that matches the hostname.  Create a rule that matches the hostname as above, but instead of pointing at the app directly, point to this intermediate trie.  Then, create an an additional rule matching a path prefix, and point that rule at the app/env trie.  Finally, add the path prefix rule to the host trie, and test as above.</p>
+      <h3>Routing by port</h3>
+      <p>There may be cases where it makes sense to use a port rather than hostname, similar to routing for internal apps.  In this case, you can simply direct a port to the automatically-created trie for you app/environment.  To do so, log into the manager, and go to Manage-&gt;Router.  In the top box, "Ports", type in your port number, select the trie for your app/environment, and click "Create Port".  This can be any port, though we recommend avoiding high-numbered ports, since they may conflict with randomly-chosen ports used for outgoing connections.  Any port under 10,000 should be safe.</p>
+      <h2>Debugging routing issues</h2>
+      <p>Once you have your rules and trie configured, you can test your application to see if you hit the new version.  Atlantis also provides basic troubleshooting; if you go to port 8080 on the router, you can append a port number to get information on how the request passes through tries and rules.  This is particularly useful with the -H option of curl to set the host header:</p>
+      <p style="margin-left: 30.0px;">$ curl -H 'Host: www.example.com' router.us-east-1.atlantis.example.com:8080/80/blog<br/>port 80<br/>  trie root<br/>    rule api-host F</p>
+      <p style="margin-left: 30.0px;">    rule www-host T<br/>    trie www-host.production<br/>      rule blog-production F<br/>      rule primary-production F</p>
+      <p>This shows that a request to www.example.com/unknown-path (port 80 is the default) doesn't match the api-host rule but does match www-host, so goes to the www-host.production trie. Then all remaining rules fail, resulting in a 502.</p>
+      <p>On further examination, the blog rule requires a trailing slash:</p>
+      <p style="margin-left: 30.0px;">$ curl -H 'Host: www.example.com' router.us-east-1.atlantis.example.com:8080/80/blog<br/>port 80<br/>  trie root<br/>    rule api-host F<br/>    rule www-host T<br/>    trie www-host.production<br/>      rule blog-production T<br/>        trie blog.production<br/>          rule static-blog-cdcd439280c8f5ff3451ec6ace19342e1330c01b-production T<br/>          pool blog-cdcd439280c8f5ff3451ec6ace19342e1330c01b-production<br/>
+        <br/>
+      </p>
+      <p>Here the blog rule matches, going to the blog.production trie, which has a single static rule going to the current version of the app.</p>
+      <h1>Deployment</h1>
+      <p>When you deploy an app:</p>
+      <ol>
+        <li>Manager tells Builder (Jenkins) to build your container.</li>
+        <li>Manager reads your manifest.</li>
+        <li>Manager validates your deploy by ensuring dependencies exist in your environment.</li>
+        <li>Manager chooses which Supervisors to deploy to.</li>
+        <li>Manager deploys to Supervisors (one by one).</li>
+        <li>Manager adds the newly deployed containers to the app+sha+env Router Pool.</li>
+        <li>If your app is an internal app, Manager creates DNS entries to point to the internal routers.</li>
+      </ol>
+      <p>To deploy your app select the <strong>Deploy </strong>menu item in the Atlantis Dashboard.</p>
+      <p>Specify the following information, ensuring it matches the information contained in the app's manifest.toml file:</p>
+      <ul>
+        <li>The name of the app.</li>
+        <li>The SHA: this field specifies which version of the app to deploy. It need not be on master but must be pushed to the GIT repo. You can retrieve the SHA from the GIT commit information for your app.</li>
+        <li>The environment to be used for the deployment.</li>
+        <li>The number of instances per availability zone (AZ). </li>
+        <li>The number of CPU Shares.</li>
+        <li>The memory limit. Consider this value carefully, because if an application goes over this limit it will be killed.</li>
+        <li>Whether you would like to deploy only one instance (total).</li>
+      </ul>
+      <p>Click the <strong>Deploy</strong> button. You will see a confirmation message indicating that a Jenkins Build for the Docker image is being triggered.</p>
+      <p>When the build is finished a <strong>More Details</strong> link appears. Click that link to see additional details, including:</p>
+      <ul>
+        <li>
+          <strong>Host</strong>: the host supervisor that was deployed</li>
+        <li>
+          <strong>Primary Port</strong>: the port on which the application is running, along with secondary ports and SSH port</li>
+        <li>
+          <strong>Docker ID</strong>
+        </li>
+        <li>
+          <strong>ID</strong>: the container ID (which is how it is referenced in the system)</li>
+        <li>
+          <strong>Healthz</strong>: the Healthz command</li>
+        <li>
+          <strong>To SSH</strong>: the SSH command to gain full access to the container</li>
+      </ul>
+      <p>Click the <strong>Status </strong>menu item in the Atlantis Dashboard. You can find information about your deployed application by searching for its container ID. The entry for your container includes a link to the host.</p>
+      <p>You will normally need to specify the router configuration <em>
+          <strong>after</strong> </em>you have deployed your app. This is typically the case when the routing defaults do not serve your purposes. For more information see <a href="https://wiki.corp.ooyala.com/display/ENG/Getting+Started+with+Atlantis#GettingStartedwithAtlantis-SpecifyingRouting">Specifying Routing</a>.</p>
+      <h1>Tear Down</h1>
+      <p>To tear down an app deployment, select the <strong>Deploy </strong>menu item in the Atlantis Dashboard. In the <strong>Teardown</strong> area, check the <strong>Sha</strong>, <strong>Env</strong>, and <strong>Container</strong> boxes as appropriate, and specify the corresponding fields that occur in the drop down menus to the right. For example, to tear down the hello-go app, specify:</p>
+      <ul>
+        <li>
+          <strong>App</strong>: hello-go</li>
+        <li>
+          <strong>Sha</strong>: 968...</li>
+        <li>
+          <strong>Env</strong>: demo</li>
+      </ul>
+      <p>Click the <strong>Teardown</strong> button. A verification message appears with a Teardown ID. You can confirm this by selecting the <strong>Status</strong> menu item in the Atlantis Dashboard and searching for the SHA. You can then return to the <strong>Router Config Management</strong> page (select the <strong>Manage &gt; Router </strong>menu item in the Atlantis Dashboard). The <strong>Tries</strong> section will no longer have the rule specifying that app version. You can then adjust the <strong>Tries</strong> and <strong>Rules</strong> sections accordingly.</p>
+      <p>Once you have finished tearing down your app:</p>
+      <ol>
+        <li>Manager chooses what containers to tear down based on the parameters.</li>
+        <li>Manager tells the Supervisor to kill the containers.</li>
+        <li>Manager removes the containers from the app+sha+env Router Pool</li>
+        <li>If your app is an internal app and that app+env is no longer deployed (any sha), Manager deletes the DNS entries that point to the internal routers.</li>
+      </ol>
+      <h1>Troubleshooting Deployed Application Containers</h1>
+      <h2>A guide to averting tragedy in two acts</h2>
+      <p>This guide is will help you figure out why your deployed Atlantis container isn't working. It's split into two acts, which share several components, who will be presented first. It assumes that you generally understand Atlantis, and have the command line client installed.</p>
+      <p>Without further ado:</p>
+      <h3>Cast of players (components), in rough order of appearance:</h3>
+      <ul>
+        <li>
+          <span>the Client: the application or user making the request of the service.</span>
+        </li>
+        <li>
+          <span>the Container: the container you've deployed to handle requests to the service.</span>
+        </li>
+        <li>
+          <span>the Internal Router: The Atlantis component sending appropriate requests to the Container in the case of an internal or Cerberus-protected application.</span>
+        </li>
+        <li>
+          <span>the External Router: The Atlantis component sending appropriate requests to the Container in the case of external application, or to Cerberus in the case of a Cerberus-protected application.</span>
+          <span> </span>
+        </li>
+      </ul>
+      <h3>Act 1: Internal Applications</h3>
+      <h4>Synopsis:</h4>
+      <p>The request flow for an internal application is simple:</p>
+      <p>Container &lt;- Internal Router &lt;- Client</p>
+      <h4>The container</h4>
+      <p style="margin-left: 30.0px;">To check if the Container is running, you can try curling it directly. Use `atlantis get-container<br/>[container id]` or the UI to get the host and port of the container. You can make requests directly against<br/>the container; if they seem to be working, continue to troubleshooting the Internal Router.</p>
+      <p style="margin-left: 30.0px;">If the request fails, you can ssh into the container, with the `atlantis ssh [container id]` command. (Do not<br/>directly ssh using the "SSH Port" from get-container; your keys will not be on the container, so you will get<br/>permission denied.)</p>
+      <p style="margin-left: 30.0px;">In the container, you can examine logs in `/var/log/atlantis/app0/`; one of those file will likely have useful<br/>information from your app telling you what's wrong.</p>
+      <p style="margin-left: 30.0px;">You can also examine the dependencies passed into your app in `/etc/atlantis/config/config.json` (json_pp is<br/>installed in containers for convenient json viewing), or do anything else you want to in your container. It's<br/>just a Linux instance.</p>
+      <h4>The Internal Router</h4>
+      <p style="margin-left: 30.0px;">If your application is working, the next step in the chain is the internal router. Every deployed<br/>application/environment is automatically assigned a port, typically in the 49000 range.</p>
+      <p style="margin-left: 30.0px;">You can see where the application should be available with `atlantis get-app-env-port -a [application] -e<br/>[environment]` or in the UI. Then curl the internal-router for your region[link] at that port. It should<br/>pass through to your application. If it does, great! The internal router is working. Continue to<br/>troubleshooting the client.</p>
+      <p style="margin-left: 30.0px;">If you get a Bad Gateway, then the router thinks there are no running containers for you<br/>application/environment. Check the router's statusz page; <span class="external-link">router-host:8080/statusz</span>. Find the pool<br/>representing your application/environment/sha. If the status isn't okay, then the router isn't getting the<br/>right Server-Status from your containers; use curl -i to make sure that /healthz returns a "Server-Status: OK"<br/>header.</p>
+      <h4>The Client</h4>
+      <p style="margin-left: 30.0px;">If the client isn't working, it's probably the client's fault; just be aware that firewall rules may prevent<br/>some connections from working.</p>
+      <h3>Act 2: External Applications</h3>
+      <h4>Synopsis</h4>
+      <p>The request flow for an external application is similar:</p>
+      <p>Container &lt;- External Router &lt;- Client</p>
+      <h4>The container</h4>
+      <p style="margin-left: 30.0px;">This is identical to act 1.</p>
+      <h4>The External Router</h4>
+      <p style="margin-left: 30.0px;">The external router is similar to the internal router, but ports aren't automatically assigned. Instead, each<br/>application is assigned a trie to handle versioning, but that trie must be manually added to a trie descended<br/>from the root true. All requests come in through port 80, and are sorted by hostname or route.</p>
+      <p style="margin-left: 30.0px;">Similar to the internal router, you can check the router's[link] status page at [router]:8080/statusz. If<br/>your services does not have status OK, troubleshoot it as in Act 1. If the app is up, check routing: if you<br/>go to [router]:8080/[port]/path, you will see how [router]:[port]/path is routed; typically you'll want to use<br/>port 80. Note also that most routing is host-based, so you need to connect to the router, but send the host<br/>header for the service you want. This can be done with</p>
+      <p style="margin-left: 30.0px;">curl -H 'Host: [service-host]' [router]:8080/[port]/path</p>
+      <p style="margin-left: 30.0px;">This will tell you where the request is being routed. If it's not getting to your app, file a ticket to get<br/>it set up.</p>
+      <h3>Epilogue: Dependencies</h3>
+      <p>Dependencies show up in /etc/atlantis/config/config.json. Note that dependencies must be both in your<br/>manifest.toml *and* approved by the appropriate team for the environment. This duplication is so that we can<br/>check at deploy time if all dependencies are all available (based on the manifest.toml), but resolve them at<br/>deploy time based on the environment.</p>
+      <h2>Atlantis Logging</h2>
+      <p>Atlantis ingests, rotates, and backs up logs using the facilities provided by rsyslog. These logs are co-located between containers and their supervisors, such that when a container goes away, whether due to termination or error, all of it's logs are still available through the supervisor. There, the logs are categorized by origin container id, and then split up via the following hierarchy (from least to most granular):</p>
+      <ul>
+        <li>
+          <p>Container ID</p>
+        </li>
+        <li>
+          <p>App Number (Position of run command in list. This will usually be app0)</p>
+        </li>
+        <li>
+          <p>Year</p>
+        </li>
+        <li>
+          <p>Month</p>
+        </li>
+        <li>
+          <p>Day</p>
+        </li>
+        <li>
+          <p>Log Type/Name</p>
+        </li>
+      </ul>
+      <h3>Apps and Facilities</h3>
+      <p>Since a container can be running multiple run commands, we separate these logs out when collected. These are distinguished using the various local facilities provided by syslog. Namely, the first run command, and usually the main app, is called "app0" (and subsequent apps will be app1, app2, etc), and logs to syslog facility local0. This is partially done automatically for the developer, but can also be used manually.</p>
+      <h1>App Requirements </h1>
+      <ol>
+        <li>The app's root must contain a <code>manifest.toml</code> file</li>
+        <li>The app must abide by the app type's contract</li>
+        <li>The app's external port must be set using the environment variable <code>$HTTP_PORT</code>
+        </li>
+        <li>Any additional ports required by the app must be set using the environment variables <code>$SECONDARY_PORT1</code> through <code>$SECONDARY_PORT5</code>. These ports will be visible but will not be configurable within router.</li>
+        <li>The app must not daemonize itself.</li>
+        <li>The app must output all logs to standard out.</li>
+        <li>The app must expose the route "<code>/healthz</code>" on it's <code>$HTTP_PORT</code>. It must return the <code>HTTP</code> status <code>200</code> and the header <code>Server-Status</code> set to <code>OK</code> if the app's health is ok (<code>DEGRADED</code> for degraded, <code>CRITICAL</code> for critical, and <code>MAINTENANCE</code> for maintenance). Any other <code>HTTP</code> status will be considered <code>MAINTENANCE</code> meaning the app will not receive any traffic.<ac:structured-macro ac:name="talk">
+            <ac:parameter ac:name="id">talk-62</ac:parameter>
+          </ac:structured-macro>
+        </li>
+        <li>The environment variable <code>$Atlantis</code> will be set to "<code>true</code>" when your app is running within Atlantis.</li>
+        <li>The app may <em>not</em> be required to serve both internal and external routes at the same time; the app will be available either on the external router or the internal router, but not both.</li>
+      </ol>This ensures a unique service name across containers.<h2>Internal Apps</h2>
+      <p>The <code>internal</code> boolean in the manifest should be set to <code>false</code> if the app should be visible outside of ooyala. Otherwise it should be <code>true</code> (and subsequently will not be visible outside of ooyala).</p>
+      <p>If <code>internal</code> is set to <code>false</code>, the pool for the app will be created in the external router configs. If it is set to <code>true</code>, the pool for the app will be created in the internal router configs.</p>
+      <p>If <code>internal</code> is set to <code>true</code>, DNS aliases will automatically be created for the app. They will be in the following format:</p>
+      <pre>
+        <code>&lt;appname&gt;.&lt;environment&gt;.&lt;zone&gt;.&lt;region&gt;.atlantis.services.ooyala.com # for zone-specific routing. environment will be empty
+                                                                     # if the name matches /^(prod|production)([_-]|$)/
+&lt;appname&gt;.&lt;environment&gt;.&lt;region&gt;.atlantis.services.ooyala.com        # for region-specific routing. environment will be empty
+                                                                     # if the name matches /^(prod|production)([_-]|$)/
+</code>
+      </pre>
+      <p>
+        <strong>Example:</strong>
+      </p>
+      <pre>
+        <code>hello-go.jigish.a.us-east-1.atlantis.services.ooyala.com
+hello-go.jigish.us-east-1.atlantis.services.ooyala.com</code>
+      </pre>
+      <h2>Custom Logging</h2>
+      <p>Each run command gets its own facility and folder to which it's stdout and stderr are automatically logged. If your app needs to have other logfiles than these 2 per run command, it is possible to specify up to 8 custom facilities/folders for log files, minus one for each run command, as these each use a single local facility (the first uses local0 and so on). In order to specify custom logging facilities, add a section to your manifest as below:</p>
+      <pre class="toml">
+        <code>[logging]
+
+  [logging.local1]
+  name = "access"
+  info = "apache.log"
+  debug = "apache-debug.log"
+
+  [logging.local2]
+  name = "routes"
+  debug = "debug.log"
+  crit = "routes.log"
+</code>
+      </pre>
+      <p>Note: This example assumes that this app only has one run command, otherwise you would get an error that local1 facility is already being used by your second run command. It may be a good practice to start with local7 for your first custom logging group, and work your way down, in order to minimize the risk of collision in the case you add run commands to your app in the future.</p>
+      <p>With this in your config, your app can log to local1.info, local1.debug, local2.debug, and local2.crit and rsyslog will in addition to /var/log/atlantis/app0/std*.log create the respective files /var/log/atlantis/access/apache.log, /var/log/atlantis/access/apache-debug.log, /var/log/atlantis/routes/debug.log and /var/log/atlantis/routes/routes.log when you write to these facilities/priorities using syslog.</p>
+      <h2>App Types</h2>
+      <h3>
+        <code>go1.1.2</code> , <code>go1.2</code> , and<code>
+          <code>go1.3</code>
+        </code>
+      </h3>
+      <p>When using the <code>go1.1.2</code>, <code>go1.2</code>,or <code>go1.3</code> app types, the contract is as follows:</p>
+      <ol>
+        <li>The app must contain a <code>Makefile</code> in its root with the <code>make</code> target <code>package</code>.</li>
+        <li>
+          <code>make package</code> should create a directory called <code>package</code> inside the app's root directory.</li>
+        <li>If <code>setup_command</code> is specified, it will be run from within the app's root directory <em>before</em> <code>make package</code> is run.</li>
+        <li>The <code>run_command</code> will be run from within the <code>package</code> directory, but the <code>package</code> directory will be moved outside of the app root. Contents of the <code>package</code> directory should not depend on anything outside of the <code>package</code> directory. Everything outside of the <code>package</code> directory will be removed from the container.</li>
+      </ol>
+      <p>
+        <strong>Example Repo:</strong> <code>hello-go</code>
+      </p>
+      <h3>
+        <code>ruby1.9.3</code>
+      </h3>
+      <p>When using the <code>ruby1.9.3</code> and other upcoming ruby app types, the contract is as follows:</p>
+      <ol>
+        <li>The app must contain a <code>Gemfile</code> in its root. Bundler will be used to install the gems.</li>
+        <li>If <code>setup_command</code> is specified, it will be run from within the app's root directory <em>before</em> <code>bundle install</code> is run.</li>
+        <li>The <code>run_command</code> will be run from within the app's root directory.</li>
+      </ol>
+      <p>
+        <strong>Example Repo:</strong> <code>hello-ruby</code> and <code>hello-ruby2</code>
+      </p>
+      <h3>
+        <code>python2.7.3</code>
+      </h3>
+      <p>When using the <code>python2.7.3</code> app type, the contract is as follows:</p>
+      <ol>
+        <li>The app must contain a <code>requirements.txt</code> in its root, pip will be used to install the eggs.</li>
+        <li>If <code>setup_command</code> is specified, it will be run from within the app's root directory <em>before</em> <code>bundle install</code> is run.</li>
+        <li>The <code>run_command</code> will be run from within the app's root directory.</li>
+      </ol>
+      <h3>
+        <code>java1.7-scala</code>
+      </h3>
+      <p>When using the <code>java1.7</code> app type, and <code>scala</code> java type the contract is as follows:</p>
+      <ol>
+        <li>The app must contain a <code>build.sbt</code> in its root. sbt will be used to compile the code into a jar, which will be executed.</li>
+        <li>All tests for the app must pass, as the command <code>sbt assembly</code> will run all tests before packaging and compiling.</li>
+        <li>If <code>setup_command</code> is specified, it will be run from within the app's root directory <em>after</em> <code>sbt assembly</code> is run. Note that <code>sbt assembly</code> is run outside of the container, but <code>setup_command</code> is run within the container.</li>
+        <li>The <code>run_command</code> will be run from within the app's root directory.</li>
+      </ol>
+      <h3>
+        <code>java1.7-maven</code>
+      </h3>
+      <p>When using the <code>java1.7</code> app type, and <code>maven</code> java type the contract is as follows:</p>
+      <ol>
+        <li>The app must contain a <code>pom.xml</code> in its root. mvm will be used to compile the code into a jar, which will be executed.</li>
+        <li>All tests for the app must pass, as the command <code>mvn build</code> will run all tests before packaging and compiling.</li>
+        <li>If <code>setup_command</code> is specified, it will be run from within the app's root directory <em>after</em> <code>mvn build</code> is run. Note that <code>mvn build</code> is run outside of the container, but <code>setup_command</code> is run within the container.</li>
+        <li>The <code>run_command</code> will be run from within the app's root directory.</li>
+      </ol>
+      <h2>Build Information</h2>
+      <p>Some information about the build can be found within the container in the <code>/etc/atlantis/build</code> folder.</p>
+      <ul>
+        <li>
+          <strong>Branch:</strong> <code>/etc/atlantis/build/branch</code>
+        </li>
+        <li>
+          <strong>Build Time:</strong> <code>/etc/atlantis/build/time</code>
+        </li>
+        <li>
+          <strong>Rev List:</strong> <code>/etc/atlantis/build/revlist</code>
+        </li>
+      </ul>
+  </body>
+<html>
+
