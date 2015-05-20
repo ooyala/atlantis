@@ -35,7 +35,7 @@ Each component is briefly discussed below, and detailed in more information in i
 
 In addition, we depend on the following pre-existing services:
 
-- [Zookeeper](https//zookeeper.apache.org/) is used to store configuration data and ensure that updates propagate immediately.
+- [Zookeeper](https://zookeeper.apache.org/) is used to store configuration data and ensure that updates propagate immediately.
 
 - [Jenkins](https://jenkins-ci.org/) is used to manage building Docker containers for the applications.  We also have a minimal standalone build server for testing, but it doesn't provide niceties like logging or auditing.
 
