@@ -46,6 +46,11 @@ type RPCClient struct {
 	VersionOk    bool
 }
 
+type ClientResult struct {
+	client *rpc.Client
+	err    error
+}
+
 func NewRPCClient(hostAndPort, baseName, rpcVersion string, useTLS bool) *RPCClient {
 	return NewRPCClientWithConfig(BasicRPCServerOpts(hostAndPort), baseName, rpcVersion, useTLS)
 }
@@ -64,6 +69,20 @@ func (r *RPCClient) newClient(region int) (*rpc.Client, error) {
 		return r.newTLSClient(region)
 	}
 	return rpc.DialHTTP("tcp", r.Opts[region].RPCHostAndPort())
+}
+
+func (r *RPCClient) newClientOnChannel(region int) chan *ClientResult {
+	c := make(chan *ClientResult)
+	go func() {
+		if r.UseTLS {
+			client, err := r.newTLSClient(region)
+			c <- &ClientResult{client: client, err: err}
+		} else {
+			client, err := rpc.DialHTTP("tcp", r.Opts[region].RPCHostAndPort())
+			c <- &ClientResult{client: client, err: err}
+		}
+	}()
+	return c
 }
 
 func (r *RPCClient) tlsConfig() (*tls.Config, error) {
@@ -140,17 +159,21 @@ func (r *RPCClient) doRequest(name string, arg interface{}, region int, reply in
 }
 
 func (r *RPCClient) doRequestWithTimeout(name string, arg interface{}, region int, reply interface{}, timeout int) error {
-	client, err := r.newClient(region)
-	if err != nil {
-		return err
-	}
-	defer client.Close()
-	call := client.Go(r.BaseName+"."+name, arg, reply, nil)
-	select {
-	case c := <-call.Done:
-		return c.Error
-	case <-time.After(time.Duration(timeout) * time.Second):
-		return errors.New(fmt.Sprintf("Client timed out - no response within %d seconds.", timeout))
+	clientChan := r.newClientOnChannel(region)
+	callChan := make(chan *rpc.Call, 1)
+	for {
+		select {
+		case c := <-clientChan:
+			if c.err != nil {
+				return c.err
+			}
+			defer c.client.Close()
+			c.client.Go(r.BaseName+"."+name, arg, reply, callChan)
+		case c := <-callChan:
+			return c.Error
+		case <-time.After(time.Duration(timeout) * time.Second):
+			return errors.New(fmt.Sprintf("Client timed out - no response within %d seconds.", timeout))
+		}
 	}
 }
 
